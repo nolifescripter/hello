@@ -1,0 +1,28 @@
+local gui = Instance.new("ScreenGui")
+gui.Name = "kickGui"
+gui.Parent = game.CoreGui
+
+-- Создаем фрейм для GUI
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0.1, 0, 0.1, 0) -- Делаем фрейм маленьким
+Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.new(1, 1, 1)
+Frame.Active = true -- Для перемещения
+Frame.Draggable = true -- Делаем фрейм перемещаемым
+Frame.Parent = gui
+
+-- Маленькая кнопка для активации скрипта
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0.8, 0, 0.4, 0) -- Делаем кнопку маленькой
+Button.Position = UDim2.new(0.1, 0, 0.3, 0)
+Button.Text = "Kick"
+Button.BackgroundColor3 = Color3.new(0, 0, 0)
+Button.TextColor3 = Color3.new(1, 1, 1)
+Button.Font = Enum.Font.Code
+Button.Parent = Frame
+
+-- Обработчик нажатия кнопки
+Button.MouseButton1Click:Connect(function()
+    game:GetService("ReplicatedStorage").Remotes.ContainerKick:FireServer()
+    print("Скрипт активирован!")
+end)
