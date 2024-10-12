@@ -1,8 +1,3 @@
--- GUI Library: ScaryGuiLib (локальный скрипт)
-
-local ScaryGuiLib = {}
-
-function ScaryGuiLib:CreateGui()
     local ScreenGui = Instance.new("ScreenGui")
     local MainFrame = Instance.new("Frame")
     local TitleBar = Instance.new("Frame")
@@ -109,5 +104,3 @@ function ScaryGuiLib:AddButton(gui, buttonText, onClickFunction)
     NewButton.TextSize = 14
     NewButton.MouseButton1Click:Connect(onClickFunction)
 end
-
-return ScaryGuiLib
