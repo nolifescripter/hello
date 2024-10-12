@@ -1,0 +1,113 @@
+-- GUI Library: ScaryGuiLib (локальный скрипт)
+
+local ScaryGuiLib = {}
+
+function ScaryGuiLib:CreateGui()
+    local ScreenGui = Instance.new("ScreenGui")
+    local MainFrame = Instance.new("Frame")
+    local TitleBar = Instance.new("Frame")
+    local TitleLabel = Instance.new("TextLabel")
+    local MinimizeButton = Instance.new("TextButton")
+    local ActionButton = Instance.new("TextButton")
+    local DestroyGuiButton = Instance.new("TextButton")
+    
+    local isMinimized = false -- Переменная для отслеживания состояния окна
+
+    -- Настройка ScreenGui
+    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.Name = "CustomGui"
+
+    -- Настройка основного фрейма
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Position = UDim2.new(0.4, 0, 0.3, 0)
+    MainFrame.Size = UDim2.new(0, 200, 0, 300)
+
+    -- Заголовок
+    TitleBar.Name = "TitleBar"
+    TitleBar.Parent = MainFrame
+    TitleBar.BackgroundColor3 = Color3.fromRGB(30, 144, 255) -- Синий цвет как на картинке
+    TitleBar.Size = UDim2.new(1, 0, 0, 30)
+
+    -- Текст заголовка
+    TitleLabel.Name = "TitleLabel"
+    TitleLabel.Parent = TitleBar
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+    TitleLabel.Font = Enum.Font.SourceSansBold
+    TitleLabel.Text = "Scary Hide & Seek"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 18
+
+    -- Кнопка сворачивания (минус)
+    MinimizeButton.Name = "MinimizeButton"
+    MinimizeButton.Parent = TitleBar
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(30, 144, 255)
+    MinimizeButton.Position = UDim2.new(0.9, 0, 0, 0) -- Расположена справа
+    MinimizeButton.Size = UDim2.new(0, 30, 1, 0)
+    MinimizeButton.Font = Enum.Font.SourceSansBold
+    MinimizeButton.Text = "-"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 18
+    MinimizeButton.MouseButton1Click:Connect(function()
+        if isMinimized then
+            -- Развернуть окно
+            MainFrame.Size = UDim2.new(0, 200, 0, 300)
+            ActionButton.Visible = true
+            DestroyGuiButton.Visible = true
+            isMinimized = false
+        else
+            -- Свернуть окно
+            MainFrame.Size = UDim2.new(0, 200, 0, 30)
+            ActionButton.Visible = false
+            DestroyGuiButton.Visible = false
+            isMinimized = true
+        end
+    end)
+
+    -- Action кнопка
+    ActionButton.Name = "ActionButton"
+    ActionButton.Parent = MainFrame
+    ActionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    ActionButton.Size = UDim2.new(0, 180, 0, 30)
+    ActionButton.Position = UDim2.new(0, 10, 0, 40)
+    ActionButton.Font = Enum.Font.SourceSans
+    ActionButton.Text = "Action"
+    ActionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ActionButton.TextSize = 14
+    ActionButton.MouseButton1Click:Connect(function()
+        print("Action activated!")
+    end)
+
+    -- Destroy GUI кнопка
+    DestroyGuiButton.Name = "DestroyGuiButton"
+    DestroyGuiButton.Parent = MainFrame
+    DestroyGuiButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    DestroyGuiButton.Size = UDim2.new(0, 180, 0, 30)
+    DestroyGuiButton.Position = UDim2.new(0, 10, 0, 80)
+    DestroyGuiButton.Font = Enum.Font.SourceSansBold
+    DestroyGuiButton.Text = "Destroy GUI"
+    DestroyGuiButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DestroyGuiButton.TextSize = 14
+    DestroyGuiButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+end
+
+-- Функция для добавления кнопок
+function ScaryGuiLib:AddButton(gui, buttonText, onClickFunction)
+    local NewButton = Instance.new("TextButton")
+    NewButton.Parent = gui.MainFrame
+    NewButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    NewButton.Size = UDim2.new(0, 180, 0, 30)
+    NewButton.Position = UDim2.new(0, 10, 0, 120 + (#gui.MainFrame:GetChildren() - 4) * 35) -- Расположение кнопок
+    NewButton.Font = Enum.Font.SourceSans
+    NewButton.Text = buttonText
+    NewButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NewButton.TextSize = 14
+    NewButton.MouseButton1Click:Connect(onClickFunction)
+end
+
+return ScaryGuiLib
