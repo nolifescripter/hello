@@ -1,1 +1,77 @@
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
 
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Теперь MainFrame можно перемещать
+
+local TabsFrame = Instance.new("Frame")
+TabsFrame.Parent = MainFrame
+TabsFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TabsFrame.Size = UDim2.new(1, 0, 0, 30)
+TabsFrame.Position = UDim2.new(0, 0, 0, 0)
+
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Parent = MainFrame
+ContentFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+
+local TabButtons = {}
+local Frames = {}
+
+local function createTab(name)
+    local TabButton = Instance.new("TextButton")
+    TabButton.Parent = TabsFrame
+    TabButton.Text = name
+    TabButton.Size = UDim2.new(0, 100, 1, 0)
+    TabButton.Position = UDim2.new(#TabButtons * 0.33, 0, 0, 0)
+    TabButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    local TabFrame = Instance.new("Frame")
+    TabFrame.Parent = ContentFrame
+    TabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabFrame.Size = UDim2.new(1, 0, 1, 0)
+    TabFrame.Visible = false
+
+    table.insert(TabButtons, TabButton)
+    table.insert(Frames, TabFrame)
+
+    TabButton.MouseButton1Click:Connect(function()
+        for _, frame in pairs(Frames) do
+            frame.Visible = false
+        end
+        TabFrame.Visible = true
+    end)
+end
+
+-- Функция для добавления кнопок в конкретную вкладку
+local function addButton(tabIndex, buttonText, buttonFunction)
+    local TabFrame = Frames[tabIndex]
+    local Button = Instance.new("TextButton")
+    Button.Parent = TabFrame
+    Button.Text = buttonText
+    Button.Size = UDim2.new(0, 200, 0, 30)
+    Button.Position = UDim2.new(0.5, -100, 0, #TabFrame:GetChildren() * 40 - 40)
+    Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    Button.MouseButton1Click:Connect(buttonFunction)
+end
+
+-- Пример использования
+createTab("Tab 1")
+createTab("Tab 2")
+createTab("Sigma")
+
+addButton(1, "Button 1", function() print("Button 1 pressed") end)
+addButton(2, "Button 2", function() print("Button 2 pressed") end)
+addButton(3, "Button 1", function() print("Button 1 pressed") end)
+
+Frames[1].Visible = true  -- Активируем первую вкладку по умолчанию
