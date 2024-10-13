@@ -115,7 +115,6 @@ SubmitButton.MouseButton1Click:Connect(function()
         print("Скрипт отправлен для игрока: " .. playerName)
     else
         print("sigma")
-    end
 end)
   	end     end)
 addButton(1, "world cutting slash", function() local gui = Instance.new("ScreenGui")
@@ -150,7 +149,6 @@ Button.MouseButton1Click:Connect(function()
     game:GetService("ReplicatedStorage").AllRemoteEvents.CLientToServerR:FireServer(unpack(args))
     print("Скрипт активирован!")
 end)
-  	end     end)
 addButton(3, "Button 1", function() print("Button 1 pressed") end)
 
 Frames[1].Visible = true  -- Активируем первую вкладку по умолчанию
