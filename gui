@@ -70,7 +70,7 @@ createTab("Kj battlegrounds")
 createTab("Tab 2")
 createTab("Sigma")
 
-addButton(1, "Button 1", function() printlocal gui = Instance.new("ScreenGui")
+addButton(1, "Button 1", function() local gui = Instance.new("ScreenGui")
 gui.Name = "playerGui"
 gui.Parent = game.CoreGui
 
