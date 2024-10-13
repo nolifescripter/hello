@@ -66,12 +66,91 @@ local function addButton(tabIndex, buttonText, buttonFunction)
 end
 
 -- Пример использования
-createTab("Tab 1")
+createTab("Kj battlegrounds")
 createTab("Tab 2")
 createTab("Sigma")
 
-addButton(1, "Button 1", function() print("Button 1 pressed") end)
-addButton(2, "Button 2", function() print("Button 2 pressed") end)
+addButton(1, "Button 1", function() printlocal gui = Instance.new("ScreenGui")
+gui.Name = "playerGui"
+gui.Parent = game.CoreGui
+
+-- gui
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0.3, 0, 0.4, 0)
+Frame.Position = UDim2.new(0.35, 0, 0.3, 0)
+Frame.BackgroundColor3 = Color3.new(1, 1, 1)
+Frame.Active = true -- Это нужно для возможности перетаскивания
+Frame.Draggable = true -- Делаем фрейм перемещаемым
+Frame.Parent = gui
+
+-- box
+local PlayerNameBox = Instance.new("TextBox")
+PlayerNameBox.Size = UDim2.new(0.8, 0, 0.2, 0)
+PlayerNameBox.Position = UDim2.new(0.1, 0, 0.2, 0)
+PlayerNameBox.PlaceholderText = "Enter player name"
+PlayerNameBox.Text = ""
+PlayerNameBox.TextColor3 = Color3.new(0, 0, 0)
+PlayerNameBox.Parent = Frame
+
+-- click
+local SubmitButton = Instance.new("TextButton")
+SubmitButton.Size = UDim2.new(0.5, 0, 0.2, 0)
+SubmitButton.Position = UDim2.new(0.25, 0, 0.5, 0)
+SubmitButton.Text = "Submit"
+SubmitButton.BackgroundColor3 = Color3.new(0.7, 0.7, 0.7)
+SubmitButton.Parent = Frame
+
+-- click
+SubmitButton.MouseButton1Click:Connect(function()
+    local playerName = PlayerNameBox.Text
+    if playerName ~= "" then
+        local args = {
+            [1] = "Ravage1",
+            [2] = game:GetService("Players")[playerName].Character, -- используем имя игрока, введенное в поле
+            [3] = 6.133333206176758,
+            [4] = Vector3.new(4753.8564453125, 403.7635803222656, -3480.546142578125)
+        }
+
+        game:GetService("ReplicatedStorage").AllRemoteEvents.CLientToServerR:FireServer(unpack(args))
+        print("Скрипт отправлен для игрока: " .. playerName)
+    else
+        print("sigma")
+    end
+end)
+  	end     end)
+addButton(1, "world cutting slash", function() local gui = Instance.new("ScreenGui")
+gui.Name = "worldCutGui"
+gui.Parent = game.CoreGui
+
+-- gui
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0.2, 0, 0.2, 0)
+Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.new(1, 1, 1)
+Frame.Active = true -- Необходимо для перемещения
+Frame.Draggable = true -- Делаем фрейм перемещаемым
+Frame.Parent = gui
+
+-- button
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0.8, 0, 0.4, 0)
+Button.Position = UDim2.new(0.1, 0, 0.3, 0)
+Button.Text = "Activate Script"
+Button.BackgroundColor3 = Color3.new(0, 0, 0)
+Button.TextColor3 = Color3.new(1, 1, 1)
+Button.Font = Enum.Font.Code
+Button.Parent = Frame
+
+-- vlick
+Button.MouseButton1Click:Connect(function()
+    local args = {
+        [1] = "WorldCutHitt"
+    }
+
+    game:GetService("ReplicatedStorage").AllRemoteEvents.CLientToServerR:FireServer(unpack(args))
+    print("Скрипт активирован!")
+end)
+  	end     end)
 addButton(3, "Button 1", function() print("Button 1 pressed") end)
 
 Frames[1].Visible = true  -- Активируем первую вкладку по умолчанию
