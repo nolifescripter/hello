@@ -155,5 +155,5 @@ addButton(1, "world cutting slash", function()
 end)
 addButton(2, "world cutting slash", function()
 print("pls")
-
+end)
 Frames[1].Visible = true  -- Активируем первую вкладку по умолчанию
