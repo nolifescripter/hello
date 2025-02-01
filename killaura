@@ -64,7 +64,7 @@ local function killaura()
         if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
             Attack:InvokeServer(target)
         end
-        task.wait(0.05) -- Оптимизация
+        task.wait(0.1) -- Оптимизация
     end
     killauraRunning = false
 end
