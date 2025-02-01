@@ -1,0 +1,82 @@
+local player = game.Players.LocalPlayer
+local Attack = game.ReplicatedStorage.GameRemotes:WaitForChild("Attack")
+local killauratoggle = false
+local killauraRunning = false
+
+-- Создаём GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KillAuraGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Создаём основной фрейм (панель сверху)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 50)
+frame.Position = UDim2.new(0.5, -100, 0, 10) -- Вверху по центру
+frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+frame.BorderSizePixel = 2
+frame.Parent = screenGui
+
+-- Создаём кнопку Enable
+local enableButton = Instance.new("TextButton")
+enableButton.Size = UDim2.new(0, 90, 0, 40)
+enableButton.Position = UDim2.new(0, 5, 0, 5)
+enableButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+enableButton.Text = "Enable"
+enableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+enableButton.Font = Enum.Font.SourceSansBold
+enableButton.TextSize = 20
+enableButton.Parent = frame
+
+-- Создаём кнопку Disable
+local disableButton = Instance.new("TextButton")
+disableButton.Size = UDim2.new(0, 90, 0, 40)
+disableButton.Position = UDim2.new(0, 105, 0, 5)
+disableButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+disableButton.Text = "Disable"
+disableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+disableButton.Font = Enum.Font.SourceSansBold
+disableButton.TextSize = 20
+disableButton.Parent = frame
+
+-- Функция поиска ближайшего игрока
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+            local distance = (v.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
+            if distance < shortestDistance then
+                closestPlayer = v.Character
+                shortestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Основная функция киллауры
+local function killaura()
+    killauraRunning = true
+    while killauratoggle do
+        local target = getClosestPlayer()
+        if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+            Attack:InvokeServer(target)
+        end
+        task.wait(0.05) -- Оптимизация
+    end
+    killauraRunning = false
+end
+
+-- Обработчики кнопок
+enableButton.MouseButton1Click:Connect(function()
+    if not killauratoggle and not killauraRunning then
+        killauratoggle = true
+        task.spawn(killaura)
+    end
+end)
+
+disableButton.MouseButton1Click:Connect(function()
+    killauratoggle = false
+end)
