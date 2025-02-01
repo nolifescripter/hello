@@ -1,5 +1,5 @@
 local player = game.Players.LocalPlayer
-local Attack = game.ReplicatedStorage.GameRemotes:WaitForChild("Attack")
+local Attack = game.ReplicatedStorage:WaitForChild("GameRemotes"):WaitForChild("Attack")
 local killauratoggle = false
 local killauraConnection = nil
 
@@ -8,7 +8,7 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "KillAuraGui"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Создаём основной фрейм (панель сверху)
+-- Основной фрейм (панель сверху)
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
 frame.Position = UDim2.new(0.5, -100, 0, 10) -- Вверху по центру
@@ -16,7 +16,7 @@ frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.BorderSizePixel = 2
 frame.Parent = screenGui
 
--- Создаём кнопку Enable
+-- Кнопка Enable
 local enableButton = Instance.new("TextButton")
 enableButton.Size = UDim2.new(0, 90, 0, 40)
 enableButton.Position = UDim2.new(0, 5, 0, 5)
@@ -27,7 +27,7 @@ enableButton.Font = Enum.Font.SourceSansBold
 enableButton.TextSize = 20
 enableButton.Parent = frame
 
--- Создаём кнопку Disable
+-- Кнопка Disable
 local disableButton = Instance.new("TextButton")
 disableButton.Size = UDim2.new(0, 90, 0, 40)
 disableButton.Position = UDim2.new(0, 105, 0, 5)
@@ -56,14 +56,14 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Основная функция киллауры (работает без task.wait)
+-- Основная функция киллауры
 local RunService = game:GetService("RunService")
 
 local function startKillaura()
     if killauratoggle or killauraConnection then return end
     killauratoggle = true
     
-    killauraConnection = RunService.RenderStepped:Connect(function()
+    killauraConnection = RunService.Heartbeat:Connect(function()
         local target = getClosestPlayer()
         if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
             Attack:InvokeServer(target)
