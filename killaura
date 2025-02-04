@@ -1,7 +1,6 @@
 local player = game.Players.LocalPlayer
 local Attack = game.ReplicatedStorage:WaitForChild("GameRemotes"):WaitForChild("Attack")
 local killauratoggle = false
-local killauraConnection = nil
 
 -- Создаём GUI
 local screenGui = Instance.new("ScreenGui")
@@ -56,27 +55,25 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Основная функция киллауры
-local RunService = game:GetService("RunService")
-
-local function startKillaura()
-    if killauratoggle or killauraConnection then return end
-    killauratoggle = true
-    
-    killauraConnection = RunService.Heartbeat:Connect(function()
+-- Основная функция киллауры с задержкой 0.1 сек
+local function killaura()
+    while killauratoggle do
         local target = getClosestPlayer()
         if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
             Attack:InvokeServer(target)
         end
-    end)
+        task.wait(0.1) -- Задержка в 0.1 сек
+    end
+end
+
+local function startKillaura()
+    if killauratoggle then return end
+    killauratoggle = true
+    task.spawn(killaura)
 end
 
 local function stopKillaura()
     killauratoggle = false
-    if killauraConnection then
-        killauraConnection:Disconnect()
-        killauraConnection = nil
-    end
 end
 
 -- Обработчики кнопок
