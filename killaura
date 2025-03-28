@@ -1,19 +1,80 @@
 local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local Attack = game.ReplicatedStorage:WaitForChild("GameRemotes"):WaitForChild("Attack")
 local killauratoggle = false
+local whitelist = {}
 
 -- Создаём GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "KillAuraGui"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Основной фрейм (панель сверху)
+-- Основной фрейм (KillAura GUI, НЕ двигается)
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.5, -100, 0, 10) -- Вверху по центру
+frame.Position = UDim2.new(0.5, -100, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 frame.BorderSizePixel = 2
 frame.Parent = screenGui
+
+-- Whitelist контейнер (двигается)
+local whitelistContainer = Instance.new("Frame")
+whitelistContainer.Size = UDim2.new(0, 120, 0, 150)
+whitelistContainer.Position = UDim2.new(0, 210, 0, 10)
+whitelistContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+whitelistContainer.BorderSizePixel = 2
+whitelistContainer.Active = true
+whitelistContainer.Draggable = true
+whitelistContainer.Parent = screenGui
+
+-- Заголовок Whitelist
+local whitelistTitle = Instance.new("TextLabel")
+whitelistTitle.Size = UDim2.new(1, 0, 0, 20)
+whitelistTitle.Text = "Whitelist"
+whitelistTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+whitelistTitle.Font = Enum.Font.SourceSansBold
+whitelistTitle.TextSize = 18
+whitelistTitle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+whitelistTitle.BorderSizePixel = 1
+whitelistTitle.Parent = whitelistContainer
+
+-- Лист Whitelist (список игроков)
+local whitelistList = Instance.new("ScrollingFrame")
+whitelistList.Size = UDim2.new(1, 0, 1, -70)
+whitelistList.Position = UDim2.new(0, 0, 0, 20)
+whitelistList.CanvasSize = UDim2.new(0, 0, 0, 0)
+whitelistList.BackgroundTransparency = 1
+whitelistList.Parent = whitelistContainer
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Parent = whitelistList
+
+-- InputBox для ввода имени игрока
+local inputBox = Instance.new("TextBox")
+inputBox.Size = UDim2.new(1, 0, 0, 20)
+inputBox.Position = UDim2.new(0, 0, 1, -50)
+inputBox.PlaceholderText = "Player Name"
+inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputBox.Parent = whitelistContainer
+
+-- Кнопка Add Player
+local addButton = Instance.new("TextButton")
+addButton.Size = UDim2.new(1, 0, 0, 20)
+addButton.Position = UDim2.new(0, 0, 1, -30)
+addButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+addButton.Text = "Add Player"
+addButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+addButton.Parent = whitelistContainer
+
+-- Кнопка Remove Player
+local removeButton = Instance.new("TextButton")
+removeButton.Size = UDim2.new(1, 0, 0, 20)
+removeButton.Position = UDim2.new(0, 0, 1, -10)
+removeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+removeButton.Text = "Remove Player"
+removeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+removeButton.Parent = whitelistContainer
 
 -- Кнопка Enable
 local enableButton = Instance.new("TextButton")
@@ -37,13 +98,49 @@ disableButton.Font = Enum.Font.SourceSansBold
 disableButton.TextSize = 20
 disableButton.Parent = frame
 
+-- Функции добавления и удаления игроков
+local function updateWhitelist()
+    for _, child in pairs(whitelistList:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for name in pairs(whitelist) do
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 20)
+        label.Text = name
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.BackgroundTransparency = 1
+        label.Parent = whitelistList
+    end
+end
+
+addButton.MouseButton1Click:Connect(function()
+    local name = inputBox.Text
+    if name ~= "" then
+        whitelist[name] = true
+        inputBox.Text = ""
+        updateWhitelist()
+    end
+end)
+
+removeButton.MouseButton1Click:Connect(function()
+    local name = inputBox.Text
+    if whitelist[name] then
+        whitelist[name] = nil
+        inputBox.Text = ""
+        updateWhitelist()
+    end
+end)
+
 -- Функция поиска ближайшего игрока
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
 
-    for _, v in pairs(game.Players:GetPlayers()) do
-        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 and not whitelist[v.Name] then
             local distance = (v.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude
             if distance < shortestDistance then
                 closestPlayer = v.Character
@@ -55,27 +152,16 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Основная функция киллауры с задержкой 0.1 сек
+-- Основная функция KillAura
 local function killaura()
     while killauratoggle do
         local target = getClosestPlayer()
         if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
             Attack:InvokeServer(target)
         end
-        task.wait(0.1) -- Задержка в 0.1 сек
+        task.wait(0.1)
     end
 end
 
-local function startKillaura()
-    if killauratoggle then return end
-    killauratoggle = true
-    task.spawn(killaura)
-end
-
-local function stopKillaura()
-    killauratoggle = false
-end
-
--- Обработчики кнопок
-enableButton.MouseButton1Click:Connect(startKillaura)
-disableButton.MouseButton1Click:Connect(stopKillaura)
+enableButton.MouseButton1Click:Connect(function() killauratoggle = true task.spawn(killaura) end)
+disableButton.MouseButton1Click:Connect(function() killauratoggle = false end)
