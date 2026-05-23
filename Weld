@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
 
 local me = Players.LocalPlayer
 local myChar = me.Character or me.CharacterAdded:Wait()
@@ -27,6 +28,16 @@ local offsets = {
 
 local speeds = { fast = 50, medium = 24, slow = 10 }
 
+-- // Custom offset for when user adjusts XYZ
+local customOffset = nil
+
+local function getOffset()
+    if customOffset then
+        return { pos = customOffset, rot = CFrame.Angles(0, 0, 0) }
+    end
+    return offsets[currentMode]
+end
+
 local function Stop()
     if con then con:Disconnect() con = nil end
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
@@ -43,10 +54,23 @@ local function Stop()
     end
 end
 
+-- // Find player by partial name or display name
+local function findPlayer(query)
+    query = query:lower():gsub("%s+", "")
+    if query == "" then return nil end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == me then continue end
+        if p.Name:lower():find(query) or p.DisplayName:lower():find(query) then
+            return p
+        end
+    end
+    return nil
+end
+
 local function Start()
     if con then con:Disconnect() con = nil end
 
-    local target = Players:FindFirstChild(targetName)
+    local target = findPlayer(targetName)
     if not target or not target.Character then return end
 
     local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
@@ -61,8 +85,6 @@ local function Start()
         myHum.WalkSpeed = tHum.WalkSpeed
     end
 
-    local offset = offsets[currentMode]
-
     con = RunService.Heartbeat:Connect(function()
         if not myRoot or not myRoot.Parent or myHum.Health <= 0 then
             Stop() return
@@ -76,6 +98,8 @@ local function Start()
         if speeds[currentMode] and tHum then
             myHum.WalkSpeed = tHum.WalkSpeed + 5
         end
+
+        local offset = getOffset()
 
         pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
 
@@ -124,7 +148,7 @@ nameBox.Size = UDim2.new(1, -20, 0, 35)
 nameBox.Position = UDim2.new(0, 10, 0, 45)
 nameBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-nameBox.PlaceholderText = "Enter username..."
+nameBox.PlaceholderText = "Enter username or display name..."
 nameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
 nameBox.Text = ""
 nameBox.Font = Enum.Font.Gotham
@@ -140,10 +164,85 @@ end)
 local modes = {"bodyblock", "softblock", "shield", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
 local modeButtons = {}
 
+-- // XYZ Adjust Panel (hidden by default)
+local xyzPanel = Instance.new("Frame")
+xyzPanel.Size = UDim2.new(1, -20, 0, 110)
+xyzPanel.Position = UDim2.new(0, 10, 0, 90)
+xyzPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+xyzPanel.BorderSizePixel = 0
+xyzPanel.Visible = false
+xyzPanel.Parent = frame
+Instance.new("UICorner", xyzPanel).CornerRadius = UDim.new(0, 6)
+
+local xyzTitle = Instance.new("TextLabel")
+xyzTitle.Size = UDim2.new(1, 0, 0, 20)
+xyzTitle.BackgroundTransparency = 1
+xyzTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+xyzTitle.Text = "Custom XYZ Offset"
+xyzTitle.Font = Enum.Font.GothamBold
+xyzTitle.TextSize = 11
+xyzTitle.Parent = xyzPanel
+
+local axisLabels = {"X", "Y", "Z"}
+local axisBoxes = {}
+local defaultVals = {0, 0, -3}
+
+for i, axis in ipairs(axisLabels) do
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -10, 0, 24)
+    row.Position = UDim2.new(0, 5, 0, 18 + (i-1) * 28)
+    row.BackgroundTransparency = 1
+    row.Parent = xyzPanel
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 20, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.Text = axis
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 12
+    lbl.Parent = row
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -25, 1, 0)
+    box.Position = UDim2.new(0, 25, 0, 0)
+    box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Text = tostring(defaultVals[i])
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 12
+    box.ClearTextOnFocus = false
+    box.Parent = row
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    axisBoxes[axis] = box
+end
+
+local applyXYZ = Instance.new("TextButton")
+applyXYZ.Size = UDim2.new(1, -10, 0, 20)
+applyXYZ.Position = UDim2.new(0, 5, 0, 88)
+applyXYZ.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+applyXYZ.TextColor3 = Color3.fromRGB(255, 255, 255)
+applyXYZ.Text = "Apply"
+applyXYZ.Font = Enum.Font.GothamBold
+applyXYZ.TextSize = 11
+applyXYZ.Parent = xyzPanel
+Instance.new("UICorner", applyXYZ).CornerRadius = UDim.new(0, 4)
+
+applyXYZ.MouseButton1Click:Connect(function()
+    local x = tonumber(axisBoxes["X"].Text) or 0
+    local y = tonumber(axisBoxes["Y"].Text) or 0
+    local z = tonumber(axisBoxes["Z"].Text) or 0
+    customOffset = Vector3.new(x, y, z)
+    if active then Start() end
+end)
+
+-- // Mode Buttons with double tap detection
+local lastTap = {}
+
 for i, mode in ipairs(modes) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.5, -15, 0, 28)
-    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 90 + math.floor((i-1)/2) * 34)
+    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 210 + math.floor((i-1)/2) * 34)
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Text = mode
@@ -154,19 +253,40 @@ for i, mode in ipairs(modes) do
     modeButtons[mode] = btn
 
     btn.MouseButton1Click:Connect(function()
-        currentMode = mode
-        for m, b in pairs(modeButtons) do
-            b.BackgroundColor3 = m == mode
-                and Color3.fromRGB(80, 120, 255)
-                or Color3.fromRGB(50, 50, 50)
+        local now = tick()
+        local last = lastTap[mode] or 0
+
+        if now - last < 0.35 then
+            -- // Double tap — open XYZ panel for this mode
+            customOffset = nil
+            local o = offsets[mode]
+            axisBoxes["X"].Text = tostring(o.pos.X)
+            axisBoxes["Y"].Text = tostring(o.pos.Y)
+            axisBoxes["Z"].Text = tostring(o.pos.Z)
+            xyzPanel.Visible = true
+        else
+            -- // Single tap — select mode, close xyz panel
+            xyzPanel.Visible = false
+            customOffset = nil
+            currentMode = mode
+            for m, b in pairs(modeButtons) do
+                b.BackgroundColor3 = m == mode
+                    and Color3.fromRGB(80, 120, 255)
+                    or Color3.fromRGB(50, 50, 50)
+            end
+            if active then Start() end
         end
-        if active then Start() end
+
+        lastTap[mode] = now
     end)
 end
 
+-- // Resize frame to fit everything
+frame.Size = UDim2.new(0, 220, 0, 460)
+
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
-toggle.Position = UDim2.new(0, 10, 0, 282)
+toggle.Position = UDim2.new(0, 10, 0, 400)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Text = "OFF"
@@ -210,12 +330,9 @@ myHum.Died:Connect(onDied)
 
 me.CharacterAdded:Connect(function(newChar)
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
-
     myChar = newChar
     myRoot = newChar:WaitForChild("HumanoidRootPart")
     myHum = newChar:WaitForChild("Humanoid")
-
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
-
     myHum.Died:Connect(onDied)
 end)
