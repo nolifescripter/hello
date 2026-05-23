@@ -15,11 +15,19 @@ local targetName = ""
 
 -- // Offsets for each mode
 local offsets = {
-    bodyblock = { pos = Vector3.new(0, 0, -3),   rot = CFrame.Angles(0, 0, 0) },
-    headsit   = { pos = Vector3.new(0, 3, 0.9),  rot = CFrame.Angles(0, 0, 0) },
-    elevator  = { pos = Vector3.new(0, -3, 0),   rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
-    nojump    = { pos = Vector3.new(0, 3.5, 0),  rot = CFrame.Angles(math.rad(-90), 0, 0) },
+    bodyblock  = { pos = Vector3.new(0, 0, -3),    rot = CFrame.Angles(0, 0, 0) },
+    softblock  = { pos = Vector3.new(0, 0, -1.2),  rot = CFrame.Angles(0, 0, 0) }, -- barely touching, infront
+    shield     = { pos = Vector3.new(0, -1.5, -2), rot = CFrame.Angles(0, 0, 0) }, -- infront but lower, no vision block
+    headsit    = { pos = Vector3.new(0, 3, 0.9),   rot = CFrame.Angles(0, 0, 0) },
+    elevator   = { pos = Vector3.new(0, -3, 0),    rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
+    nojump     = { pos = Vector3.new(0, 3.5, 0),   rot = CFrame.Angles(math.rad(-90), 0, 0) },
+    -- speed modes use behind offset to push them
+    fast       = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
+    medium     = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
+    slow       = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
 }
+
+local speeds = { fast = 50, medium = 24, slow = 10 }
 
 local function Stop()
     if con then con:Disconnect() con = nil end
@@ -40,16 +48,19 @@ local function Start()
     if not target or not target.Character then return end
 
     local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local tHum = target.Character:FindFirstChild("Humanoid")
     if not tRoot then return end
 
     savedPos = myRoot.CFrame
 
-    local offset = offsets[currentMode]
-    local speeds = { fast = 50, medium = 24, slow = 10 }
-
+    -- set walkspeed
     if speeds[currentMode] then
         myHum.WalkSpeed = speeds[currentMode]
+    elseif tHum then
+        myHum.WalkSpeed = tHum.WalkSpeed
     end
+
+    local offset = offsets[currentMode]
 
     con = RunService.Heartbeat:Connect(function()
         if not myRoot or not myRoot.Parent or myHum.Health <= 0 then
@@ -61,7 +72,11 @@ local function Start()
             if not tRoot then return end
         end
 
-        -- // The magic
+        -- speed modes: match their speed + 5 so we actually push
+        if speeds[currentMode] and tHum then
+            myHum.WalkSpeed = tHum.WalkSpeed + 5
+        end
+
         pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
 
         myRoot.CFrame = tRoot.CFrame * CFrame.new(offset.pos) * offset.rot
@@ -87,7 +102,7 @@ hideBtn.Parent = screenGui
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 310)
+frame.Size = UDim2.new(0, 220, 0, 340)
 frame.Position = UDim2.new(0, 20, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
@@ -122,7 +137,7 @@ nameBox:GetPropertyChangedSignal("Text"):Connect(function()
     targetName = nameBox.Text
 end)
 
-local modes = {"bodyblock", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
+local modes = {"bodyblock", "softblock", "shield", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
 local modeButtons = {}
 
 for i, mode in ipairs(modes) do
@@ -151,7 +166,7 @@ end
 
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
-toggle.Position = UDim2.new(0, 10, 0, 250)
+toggle.Position = UDim2.new(0, 10, 0, 282)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Text = "OFF"
