@@ -1,0 +1,168 @@
+local Players = game:GetService("Players")
+local me = Players.LocalPlayer
+local myChar = me.Character
+local myRoot = myChar.HumanoidRootPart
+local myHum = myChar:FindFirstChild("Humanoid")
+
+-- // State
+local currentWeld = nil
+local active = false
+local uiVisible = true
+local currentMode = "fast"
+local targetName = "PlayerNameHere"
+
+-- // Weld Function
+local function applyMode()
+    if currentWeld then
+        currentWeld:Destroy()
+        currentWeld = nil
+    end
+
+    local target = Players:FindFirstChild(targetName)
+    if not target or not target.Character then return end
+    local theirRoot = target.Character.HumanoidRootPart
+
+    local speeds = { fast = 50, medium = 24, slow = 10 }
+
+    if currentMode == "bodyblock" then
+        myRoot.CFrame = theirRoot.CFrame * CFrame.new(0, 0, -3)
+    else
+        myHum.WalkSpeed = speeds[currentMode]
+        myRoot.CFrame = theirRoot.CFrame
+    end
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = myRoot
+    weld.Part1 = theirRoot
+    weld.Parent = myRoot
+    currentWeld = weld
+end
+
+local function detach()
+    if currentWeld then
+        currentWeld:Destroy()
+        currentWeld = nil
+    end
+    myHum.WalkSpeed = 16
+    active = false
+end
+
+-- // UI
+local screenGui = Instance.new("ScreenGui")
+screenGui.ResetOnSpawn = false
+screenGui.Parent = me.PlayerGui
+
+-- // Hide Toggle Button (always visible)
+local hideBtn = Instance.new("TextButton")
+hideBtn.Size = UDim2.new(0, 80, 0, 28)
+hideBtn.Position = UDim2.new(0, 20, 0.3, -35)
+hideBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideBtn.Text = "Hide UI"
+hideBtn.Font = Enum.Font.GothamBold
+hideBtn.TextSize = 12
+hideBtn.Parent = screenGui
+Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
+
+-- // Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 270)
+frame.Position = UDim2.new(0, 20, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+-- // Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Weld Abuse"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 15
+title.Parent = frame
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
+
+-- // Username Box
+local nameBox = Instance.new("TextBox")
+nameBox.Size = UDim2.new(1, -20, 0, 35)
+nameBox.Position = UDim2.new(0, 10, 0, 45)
+nameBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameBox.PlaceholderText = "Enter username..."
+nameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+nameBox.Text = ""
+nameBox.Font = Enum.Font.Gotham
+nameBox.TextSize = 13
+nameBox.ClearTextOnFocus = false
+nameBox.Parent = frame
+Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 6)
+
+nameBox:GetPropertyChangedSignal("Text"):Connect(function()
+    targetName = nameBox.Text
+end)
+
+-- // Mode Buttons
+local modes = {"fast", "medium", "slow", "bodyblock"}
+local modeButtons = {}
+
+for i, mode in ipairs(modes) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.5, -15, 0, 30)
+    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 90 + math.floor((i-1)/2) * 38)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Text = mode
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 12
+    btn.Parent = frame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    modeButtons[mode] = btn
+
+    btn.MouseButton1Click:Connect(function()
+        currentMode = mode
+        for m, b in pairs(modeButtons) do
+            b.BackgroundColor3 = m == mode
+                and Color3.fromRGB(80, 120, 255)
+                or Color3.fromRGB(50, 50, 50)
+        end
+        -- reapply if already active
+        if active then applyMode() end
+    end)
+end
+
+-- // Toggle Button
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(1, -20, 0, 38)
+toggle.Position = UDim2.new(0, 10, 0, 200)
+toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggle.Text = "OFF"
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 14
+toggle.Parent = frame
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 6)
+
+toggle.MouseButton1Click:Connect(function()
+    active = not active
+    if active then
+        applyMode()
+        toggle.Text = "ON"
+        toggle.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+    else
+        detach()
+        toggle.Text = "OFF"
+        toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+    end
+end)
+
+-- // Hide UI Logic
+hideBtn.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    frame.Visible = uiVisible
+    hideBtn.Text = uiVisible and "Hide UI" or "Show UI"
+end)
+
+-- // Highlight default mode
+modeButtons["fast"].BackgroundColor3 = Color3.fromRGB(80, 120, 255)
