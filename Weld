@@ -6,6 +6,31 @@ local myChar = me.Character or me.CharacterAdded:Wait()
 local myRoot = myChar:WaitForChild("HumanoidRootPart")
 local myHum = myChar:WaitForChild("Humanoid")
 
+-- // Death + Respawn fix
+myHum.Died:Connect(function()
+    if active then
+        Stop()
+        active = false
+        toggle.Text = "OFF"
+        toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+    end
+end)
+
+me.CharacterAdded:Connect(function(newChar)
+    myChar = newChar
+    myRoot = newChar:WaitForChild("HumanoidRootPart")
+    myHum = newChar:WaitForChild("Humanoid")
+
+    myHum.Died:Connect(function()
+        if active then
+            Stop()
+            active = false
+            toggle.Text = "OFF"
+            toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+        end
+    end)
+end)
+
 local con = nil
 local savedPos = nil
 local active = false
