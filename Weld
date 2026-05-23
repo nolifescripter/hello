@@ -45,9 +45,11 @@ local function applyMode()
         myRoot.CFrame = theirRoot.CFrame
     end
 
-    local weld = Instance.new("WeldConstraint")
+    -- // Weld instead of WeldConstraint
+    local weld = Instance.new("Weld")
     weld.Part0 = myPart
     weld.Part1 = theirPart
+    weld.C0 = myPart.CFrame:Inverse() * theirPart.CFrame
     weld.Parent = myPart
     currentWeld = weld
 end
@@ -66,7 +68,7 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
 screenGui.Parent = me.PlayerGui
 
--- // Hide Toggle Button (always visible)
+-- // Hide Toggle Button
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 80, 0, 28)
 hideBtn.Position = UDim2.new(0, 20, 0.3, -35)
