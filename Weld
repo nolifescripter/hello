@@ -11,6 +11,15 @@ local uiVisible = true
 local currentMode = "fast"
 local targetName = "PlayerNameHere"
 
+-- // Rig Detection
+local function getWeldPart(character)
+    if character:FindFirstChild("LowerTorso") then
+        return character.LowerTorso -- R15
+    else
+        return character.Torso -- R6
+    end
+end
+
 -- // Weld Function
 local function applyMode()
     if currentWeld then
@@ -20,21 +29,26 @@ local function applyMode()
 
     local target = Players:FindFirstChild(targetName)
     if not target or not target.Character then return end
+
     local theirRoot = target.Character.HumanoidRootPart
+    local theirHum = target.Character:FindFirstChild("Humanoid")
+    local myPart = getWeldPart(myChar)
+    local theirPart = getWeldPart(target.Character)
 
     local speeds = { fast = 50, medium = 24, slow = 10 }
 
     if currentMode == "bodyblock" then
         myRoot.CFrame = theirRoot.CFrame * CFrame.new(0, 0, -3)
+        myHum.WalkSpeed = theirHum.WalkSpeed
     else
         myHum.WalkSpeed = speeds[currentMode]
         myRoot.CFrame = theirRoot.CFrame
     end
 
     local weld = Instance.new("WeldConstraint")
-    weld.Part0 = myRoot
-    weld.Part1 = theirRoot
-    weld.Parent = myRoot
+    weld.Part0 = myPart
+    weld.Part1 = theirPart
+    weld.Parent = myPart
     currentWeld = weld
 end
 
@@ -127,7 +141,6 @@ for i, mode in ipairs(modes) do
                 and Color3.fromRGB(80, 120, 255)
                 or Color3.fromRGB(50, 50, 50)
         end
-        -- reapply if already active
         if active then applyMode() end
     end)
 end
