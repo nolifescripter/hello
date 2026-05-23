@@ -1,66 +1,73 @@
 local Players = game:GetService("Players")
-local me = Players.LocalPlayer
-local myChar = me.Character
-local myRoot = myChar.HumanoidRootPart
-local myHum = myChar:FindFirstChild("Humanoid")
+local RunService = game:GetService("RunService")
 
--- // State
-local currentWeld = nil
+local me = Players.LocalPlayer
+local myChar = me.Character or me.CharacterAdded:Wait()
+local myRoot = myChar:WaitForChild("HumanoidRootPart")
+local myHum = myChar:WaitForChild("Humanoid")
+
+local con = nil
+local savedPos = nil
 local active = false
 local uiVisible = true
-local currentMode = "fast"
-local targetName = "PlayerNameHere"
+local currentMode = "bodyblock"
+local targetName = ""
 
--- // Rig Detection
-local function getWeldPart(character)
-    if character:FindFirstChild("LowerTorso") then
-        return character.LowerTorso -- R15
-    else
-        return character.Torso -- R6
+-- // Offsets for each mode
+local offsets = {
+    bodyblock = { pos = Vector3.new(0, 0, -3),   rot = CFrame.Angles(0, 0, 0) },
+    headsit   = { pos = Vector3.new(0, 3, 0.9),  rot = CFrame.Angles(0, 0, 0) },
+    elevator  = { pos = Vector3.new(0, -3, 0),   rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
+    nojump    = { pos = Vector3.new(0, 3.5, 0),  rot = CFrame.Angles(math.rad(-90), 0, 0) },
+}
+
+local function Stop()
+    if con then con:Disconnect() con = nil end
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+    if savedPos and myRoot and myRoot.Parent then
+        myRoot.CFrame = savedPos
+        myRoot.AssemblyLinearVelocity = Vector3.new()
+        myRoot.AssemblyAngularVelocity = Vector3.new()
     end
+    savedPos = nil
+    myHum.WalkSpeed = 16
 end
 
--- // Weld Function
-local function applyMode()
-    if currentWeld then
-        currentWeld:Destroy()
-        currentWeld = nil
-    end
+local function Start()
+    if con then con:Disconnect() con = nil end
 
     local target = Players:FindFirstChild(targetName)
     if not target or not target.Character then return end
 
-    local theirRoot = target.Character.HumanoidRootPart
-    local theirHum = target.Character:FindFirstChild("Humanoid")
-    local myPart = getWeldPart(myChar)
-    local theirPart = getWeldPart(target.Character)
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not tRoot then return end
 
+    savedPos = myRoot.CFrame
+
+    local offset = offsets[currentMode]
     local speeds = { fast = 50, medium = 24, slow = 10 }
 
-    if currentMode == "bodyblock" then
-        myRoot.CFrame = theirRoot.CFrame * CFrame.new(0, 0, -3)
-        myHum.WalkSpeed = theirHum.WalkSpeed
-    else
+    if speeds[currentMode] then
         myHum.WalkSpeed = speeds[currentMode]
-        myRoot.CFrame = theirRoot.CFrame
     end
 
-    -- // Weld instead of WeldConstraint
-    local weld = Instance.new("Weld")
-    weld.Part0 = myPart
-    weld.Part1 = theirPart
-    weld.C0 = myPart.CFrame:Inverse() * theirPart.CFrame
-    weld.Parent = myPart
-    currentWeld = weld
-end
+    con = RunService.Heartbeat:Connect(function()
+        if not myRoot or not myRoot.Parent or myHum.Health <= 0 then
+            Stop() return
+        end
 
-local function detach()
-    if currentWeld then
-        currentWeld:Destroy()
-        currentWeld = nil
-    end
-    myHum.WalkSpeed = 16
-    active = false
+        if not tRoot or not tRoot:IsDescendantOf(workspace) then
+            tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+            if not tRoot then return end
+        end
+
+        -- // The magic
+        pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
+
+        myRoot.CFrame = tRoot.CFrame * CFrame.new(offset.pos) * offset.rot
+        myRoot.AssemblyLinearVelocity = Vector3.new()
+        myRoot.AssemblyAngularVelocity = Vector3.new()
+    end)
 end
 
 -- // UI
@@ -68,7 +75,6 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
 screenGui.Parent = me.PlayerGui
 
--- // Hide Toggle Button
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 80, 0, 28)
 hideBtn.Position = UDim2.new(0, 20, 0.3, -35)
@@ -80,16 +86,14 @@ hideBtn.TextSize = 12
 hideBtn.Parent = screenGui
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
 
--- // Main Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 270)
+frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 20, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
--- // Title
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -100,7 +104,6 @@ title.TextSize = 15
 title.Parent = frame
 Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
 
--- // Username Box
 local nameBox = Instance.new("TextBox")
 nameBox.Size = UDim2.new(1, -20, 0, 35)
 nameBox.Position = UDim2.new(0, 10, 0, 45)
@@ -119,19 +122,18 @@ nameBox:GetPropertyChangedSignal("Text"):Connect(function()
     targetName = nameBox.Text
 end)
 
--- // Mode Buttons
-local modes = {"fast", "medium", "slow", "bodyblock"}
+local modes = {"bodyblock", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
 local modeButtons = {}
 
 for i, mode in ipairs(modes) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.5, -15, 0, 30)
-    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 90 + math.floor((i-1)/2) * 38)
+    btn.Size = UDim2.new(0.5, -15, 0, 28)
+    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 90 + math.floor((i-1)/2) * 34)
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Text = mode
     btn.Font = Enum.Font.Gotham
-    btn.TextSize = 12
+    btn.TextSize = 11
     btn.Parent = frame
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     modeButtons[mode] = btn
@@ -143,14 +145,13 @@ for i, mode in ipairs(modes) do
                 and Color3.fromRGB(80, 120, 255)
                 or Color3.fromRGB(50, 50, 50)
         end
-        if active then applyMode() end
+        if active then Start() end
     end)
 end
 
--- // Toggle Button
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
-toggle.Position = UDim2.new(0, 10, 0, 200)
+toggle.Position = UDim2.new(0, 10, 0, 250)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Text = "OFF"
@@ -162,22 +163,20 @@ Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 6)
 toggle.MouseButton1Click:Connect(function()
     active = not active
     if active then
-        applyMode()
+        Start()
         toggle.Text = "ON"
         toggle.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
     else
-        detach()
+        Stop()
         toggle.Text = "OFF"
         toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
     end
 end)
 
--- // Hide UI Logic
 hideBtn.MouseButton1Click:Connect(function()
     uiVisible = not uiVisible
     frame.Visible = uiVisible
     hideBtn.Text = uiVisible and "Hide UI" or "Show UI"
 end)
 
--- // Highlight default mode
-modeButtons["fast"].BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+modeButtons["bodyblock"].BackgroundColor3 = Color3.fromRGB(80, 120, 255)
