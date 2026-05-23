@@ -13,6 +13,7 @@ local active = false
 local uiVisible = true
 local currentMode = "bodyblock"
 local targetName = ""
+local customOffset = nil
 
 local offsets = {
     bodyblock  = { pos = Vector3.new(0, 0, -3),      rot = CFrame.Angles(0, 0, 0) },
@@ -27,9 +28,6 @@ local offsets = {
 }
 
 local speeds = { fast = 50, medium = 24, slow = 10 }
-
--- // Custom offset for when user adjusts XYZ
-local customOffset = nil
 
 local function getOffset()
     if customOffset then
@@ -54,7 +52,6 @@ local function Stop()
     end
 end
 
--- // Find player by partial name or display name
 local function findPlayer(query)
     query = query:lower():gsub("%s+", "")
     if query == "" then return nil end
@@ -69,40 +66,28 @@ end
 
 local function Start()
     if con then con:Disconnect() con = nil end
-
     local target = findPlayer(targetName)
     if not target or not target.Character then return end
-
     local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
     local tHum = target.Character:FindFirstChild("Humanoid")
     if not tRoot then return end
-
     savedPos = myRoot.CFrame
-
     if speeds[currentMode] then
         myHum.WalkSpeed = speeds[currentMode]
     elseif tHum then
         myHum.WalkSpeed = tHum.WalkSpeed
     end
-
     con = RunService.Heartbeat:Connect(function()
-        if not myRoot or not myRoot.Parent or myHum.Health <= 0 then
-            Stop() return
-        end
-
+        if not myRoot or not myRoot.Parent or myHum.Health <= 0 then Stop() return end
         if not tRoot or not tRoot:IsDescendantOf(workspace) then
             tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
             if not tRoot then return end
         end
-
         if speeds[currentMode] and tHum then
             myHum.WalkSpeed = tHum.WalkSpeed + 5
         end
-
         local offset = getOffset()
-
         pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
-
         myRoot.CFrame = tRoot.CFrame * CFrame.new(offset.pos) * offset.rot
         myRoot.AssemblyLinearVelocity = Vector3.new()
         myRoot.AssemblyAngularVelocity = Vector3.new()
@@ -114,6 +99,43 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
 screenGui.Parent = me.PlayerGui
 
+-- // Dragging function
+local function makeDraggable(dragHandle, dragTarget)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = dragTarget.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    dragHandle.InputChanged:Connect(function(input)
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+            local delta = input.Position - dragStart
+            dragTarget.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- // Hide button
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 80, 0, 28)
 hideBtn.Position = UDim2.new(0, 20, 0.3, -35)
@@ -125,23 +147,30 @@ hideBtn.TextSize = 12
 hideBtn.Parent = screenGui
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
 
+-- // Main frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 340)
+frame.Size = UDim2.new(0, 220, 0, 460)
 frame.Position = UDim2.new(0, 20, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 35)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Text = "Weld Abuse"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 15
-title.Parent = frame
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
+-- // Title bar (drag handle for frame)
+local titleBar = Instance.new("TextLabel")
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleBar.Text = "Weld Abuse"
+titleBar.Font = Enum.Font.GothamBold
+titleBar.TextSize = 15
+titleBar.Parent = frame
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+-- make frame draggable by title bar
+makeDraggable(titleBar, frame)
+-- make hide button draggable too
+makeDraggable(hideBtn, hideBtn)
 
 local nameBox = Instance.new("TextBox")
 nameBox.Size = UDim2.new(1, -20, 0, 35)
@@ -161,10 +190,7 @@ nameBox:GetPropertyChangedSignal("Text"):Connect(function()
     targetName = nameBox.Text
 end)
 
-local modes = {"bodyblock", "softblock", "shield", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
-local modeButtons = {}
-
--- // XYZ Adjust Panel (hidden by default)
+-- // XYZ Panel
 local xyzPanel = Instance.new("Frame")
 xyzPanel.Size = UDim2.new(1, -20, 0, 110)
 xyzPanel.Position = UDim2.new(0, 10, 0, 90)
@@ -236,7 +262,9 @@ applyXYZ.MouseButton1Click:Connect(function()
     if active then Start() end
 end)
 
--- // Mode Buttons with double tap detection
+-- // Mode buttons
+local modes = {"bodyblock", "softblock", "shield", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
+local modeButtons = {}
 local lastTap = {}
 
 for i, mode in ipairs(modes) do
@@ -255,9 +283,7 @@ for i, mode in ipairs(modes) do
     btn.MouseButton1Click:Connect(function()
         local now = tick()
         local last = lastTap[mode] or 0
-
         if now - last < 0.35 then
-            -- // Double tap — open XYZ panel for this mode
             customOffset = nil
             local o = offsets[mode]
             axisBoxes["X"].Text = tostring(o.pos.X)
@@ -265,7 +291,6 @@ for i, mode in ipairs(modes) do
             axisBoxes["Z"].Text = tostring(o.pos.Z)
             xyzPanel.Visible = true
         else
-            -- // Single tap — select mode, close xyz panel
             xyzPanel.Visible = false
             customOffset = nil
             currentMode = mode
@@ -276,17 +301,14 @@ for i, mode in ipairs(modes) do
             end
             if active then Start() end
         end
-
         lastTap[mode] = now
     end)
 end
 
--- // Resize frame to fit everything
-frame.Size = UDim2.new(0, 220, 0, 460)
-
+-- // Toggle
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
-toggle.Position = UDim2.new(0, 10, 0, 400)
+toggle.Position = UDim2.new(0, 10, 0, 410)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Text = "OFF"
