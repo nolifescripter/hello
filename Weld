@@ -6,31 +6,6 @@ local myChar = me.Character or me.CharacterAdded:Wait()
 local myRoot = myChar:WaitForChild("HumanoidRootPart")
 local myHum = myChar:WaitForChild("Humanoid")
 
--- // Death + Respawn fix
-myHum.Died:Connect(function()
-    if active then
-        Stop()
-        active = false
-        toggle.Text = "OFF"
-        toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
-    end
-end)
-
-me.CharacterAdded:Connect(function(newChar)
-    myChar = newChar
-    myRoot = newChar:WaitForChild("HumanoidRootPart")
-    myHum = newChar:WaitForChild("Humanoid")
-
-    myHum.Died:Connect(function()
-        if active then
-            Stop()
-            active = false
-            toggle.Text = "OFF"
-            toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
-        end
-    end)
-end)
-
 local con = nil
 local savedPos = nil
 local active = false
@@ -38,18 +13,16 @@ local uiVisible = true
 local currentMode = "bodyblock"
 local targetName = ""
 
--- // Offsets for each mode
 local offsets = {
-    bodyblock  = { pos = Vector3.new(0, 0, -3),    rot = CFrame.Angles(0, 0, 0) },
-    softblock  = { pos = Vector3.new(0, 0, -1.2),  rot = CFrame.Angles(0, 0, 0) }, -- barely touching, infront
-    shield     = { pos = Vector3.new(0, -1.5, -2), rot = CFrame.Angles(0, 0, 0) }, -- infront but lower, no vision block
-    headsit    = { pos = Vector3.new(0, 3, 0.9),   rot = CFrame.Angles(0, 0, 0) },
-    elevator   = { pos = Vector3.new(0, -3, 0),    rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
-    nojump     = { pos = Vector3.new(0, 3.5, 0),   rot = CFrame.Angles(math.rad(-90), 0, 0) },
-    -- speed modes use behind offset to push them
-    fast       = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
-    medium     = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
-    slow       = { pos = Vector3.new(0, 0, 2),     rot = CFrame.Angles(0, 0, 0) },
+    bodyblock  = { pos = Vector3.new(0, 0, -3),      rot = CFrame.Angles(0, 0, 0) },
+    softblock  = { pos = Vector3.new(0, 0, -1.2),    rot = CFrame.Angles(0, 0, 0) },
+    shield     = { pos = Vector3.new(0, -1.5, -1.2), rot = CFrame.Angles(0, 0, 0) },
+    headsit    = { pos = Vector3.new(0, 3, 0.9),     rot = CFrame.Angles(0, 0, 0) },
+    elevator   = { pos = Vector3.new(0, -3, 0),      rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
+    nojump     = { pos = Vector3.new(0, 3.5, 0),     rot = CFrame.Angles(math.rad(-90), 0, 0) },
+    fast       = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
+    medium     = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
+    slow       = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
 }
 
 local speeds = { fast = 50, medium = 24, slow = 10 }
@@ -57,13 +30,17 @@ local speeds = { fast = 50, medium = 24, slow = 10 }
 local function Stop()
     if con then con:Disconnect() con = nil end
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+    task.wait()
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
     if savedPos and myRoot and myRoot.Parent then
         myRoot.CFrame = savedPos
         myRoot.AssemblyLinearVelocity = Vector3.new()
         myRoot.AssemblyAngularVelocity = Vector3.new()
     end
     savedPos = nil
-    myHum.WalkSpeed = 16
+    if myHum and myHum.Parent then
+        myHum.WalkSpeed = 16
+    end
 end
 
 local function Start()
@@ -78,7 +55,6 @@ local function Start()
 
     savedPos = myRoot.CFrame
 
-    -- set walkspeed
     if speeds[currentMode] then
         myHum.WalkSpeed = speeds[currentMode]
     elseif tHum then
@@ -97,7 +73,6 @@ local function Start()
             if not tRoot then return end
         end
 
-        -- speed modes: match their speed + 5 so we actually push
         if speeds[currentMode] and tHum then
             myHum.WalkSpeed = tHum.WalkSpeed + 5
         end
@@ -220,3 +195,27 @@ hideBtn.MouseButton1Click:Connect(function()
 end)
 
 modeButtons["bodyblock"].BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+
+-- // Death + Respawn fix
+local function onDied()
+    if active then
+        Stop()
+        active = false
+        toggle.Text = "OFF"
+        toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+    end
+end
+
+myHum.Died:Connect(onDied)
+
+me.CharacterAdded:Connect(function(newChar)
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+
+    myChar = newChar
+    myRoot = newChar:WaitForChild("HumanoidRootPart")
+    myHum = newChar:WaitForChild("Humanoid")
+
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+
+    myHum.Died:Connect(onDied)
+end)
