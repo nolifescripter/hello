@@ -131,6 +131,13 @@ local function Start()
     stopBangAnims()
 
     local target = findPlayer(targetName)
+    print("target:", target)
+    if not target or not target.Character then
+        print("no target or no character")
+        return
+    end
+
+    local target = findPlayer(targetName)
     if not target or not target.Character then return end
     local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
     local tHum = target.Character:FindFirstChild("Humanoid")
