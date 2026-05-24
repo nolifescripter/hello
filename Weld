@@ -3,6 +3,16 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 
 local me = Players.LocalPlayer
+
+-- // Simulation radius fix
+me.SimulationRadius = 99999
+me.MaximumSimulationRadius = 99999
+pcall(function() setsimulationradius(99999) end)
+RunService.Heartbeat:Connect(function()
+    me.SimulationRadius = 99999
+    me.MaximumSimulationRadius = 99999
+end)
+
 local myChar = me.Character or me.CharacterAdded:Wait()
 local myRoot = myChar:WaitForChild("HumanoidRootPart")
 local myHum = myChar:WaitForChild("Humanoid")
@@ -14,30 +24,89 @@ local uiVisible = true
 local currentMode = "bodyblock"
 local targetName = ""
 local customOffset = nil
+local customRot = nil
+local currentPage = 1
+
+-- // Bang animation state
+local animTrack1 = nil
+local animTrack2 = nil
+local animLoop = nil
+local currentAnim = 1
+
+local function stopBangAnims()
+    if animLoop then task.cancel(animLoop) animLoop = nil end
+    if animTrack1 then animTrack1:Stop() animTrack1 = nil end
+    if animTrack2 then animTrack2:Stop() animTrack2 = nil end
+end
+
+local function playNextAnim()
+    if not myHum then return end
+    currentAnim = currentAnim == 1 and 2 or 1
+    if currentAnim == 1 then
+        if animTrack2 then animTrack2:Stop() end
+        if not animTrack1 then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://215262147"
+            animTrack1 = myHum:LoadAnimation(anim)
+        end
+        animTrack1:Play()
+    else
+        if animTrack1 then animTrack1:Stop() end
+        if not animTrack2 then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://185299570"
+            animTrack2 = myHum:LoadAnimation(anim)
+        end
+        animTrack2:Play()
+    end
+end
+
+local function startBangAnimLoop()
+    playNextAnim()
+    animLoop = task.delay(0.5, function()
+        startBangAnimLoop()
+    end)
+end
 
 local offsets = {
-    bodyblock  = { pos = Vector3.new(0, 0, -3),      rot = CFrame.Angles(0, 0, 0) },
-    softblock  = { pos = Vector3.new(0, 0, -1.2),    rot = CFrame.Angles(0, 0, 0) },
-    shield     = { pos = Vector3.new(0, -1.5, -1.2), rot = CFrame.Angles(0, 0, 0) },
-    headsit    = { pos = Vector3.new(0, 3, 0.9),     rot = CFrame.Angles(0, 0, 0) },
-    elevator   = { pos = Vector3.new(0, -3, 0),      rot = CFrame.Angles(math.rad(-90), 0, math.rad(3)) },
-    nojump     = { pos = Vector3.new(0, 3.5, 0),     rot = CFrame.Angles(math.rad(-90), 0, 0) },
-    fast       = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
-    medium     = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
-    slow       = { pos = Vector3.new(0, 0, 2),       rot = CFrame.Angles(0, 0, 0) },
+    bodyblock   = { pos = Vector3.new(0, 0, -3),      rot = Vector3.new(0, 0, 0) },
+    softblock   = { pos = Vector3.new(0, 0, -1.2),    rot = Vector3.new(0, 0, 0) },
+    shield      = { pos = Vector3.new(0, -1.5, -1.2), rot = Vector3.new(0, 0, 0) },
+    headsit     = { pos = Vector3.new(0, 3, 0.9),     rot = Vector3.new(0, 0, 0) },
+    elevator    = { pos = Vector3.new(0, -3, 0),      rot = Vector3.new(-90, 0, 3.34) },
+    nojump      = { pos = Vector3.new(0, 3.5, 0),     rot = Vector3.new(-90, 0, 0) },
+    magiccarpet = { pos = Vector3.new(0, -3.6, 0),    rot = Vector3.new(-90, 0, 0) },
+    platform    = { pos = Vector3.new(0, -4, 0),      rot = Vector3.new(-90, 0, 0) },
+    jumpscare   = { pos = Vector3.new(0, 1.5, -0.8),  rot = Vector3.new(0, 180, 0) },
+    infjump     = { pos = Vector3.new(0, -5.75, 0),   rot = Vector3.new(0, 0, 0) },
+    fast        = { pos = Vector3.new(0, 0, 2),       rot = Vector3.new(0, 0, 0) },
+    medium      = { pos = Vector3.new(0, 0, 2),       rot = Vector3.new(0, 0, 0) },
+    slow        = { pos = Vector3.new(0, 0, 2),       rot = Vector3.new(0, 0, 0) },
+    annoy       = { pos = Vector3.new(0, 0, 1.5),     rot = Vector3.new(0, 0, 0) },
+    bang        = { pos = Vector3.new(0, 0, 1.2),     rot = Vector3.new(0, 0, 0) },
+    invert      = { pos = Vector3.new(0, 0, 2),       rot = Vector3.new(0, 180, 0) },
 }
 
-local speeds = { fast = 50, medium = 24, slow = 10 }
+local pages = {
+    { name = "Poses", modes = {"bodyblock","softblock","shield","headsit","elevator","nojump","magiccarpet","platform","jumpscare","infjump"} },
+    { name = "Speed", modes = {"fast","medium","slow","annoy","bang","invert"} },
+}
+
+local speeds = { fast = 50, medium = 24, slow = 10, annoy = 30, bang = 60, invert = 24 }
 
 local function getOffset()
-    if customOffset then
-        return { pos = customOffset, rot = CFrame.Angles(0, 0, 0) }
-    end
-    return offsets[currentMode]
+    local base = offsets[currentMode]
+    local pos = customOffset or base.pos
+    local rot = customRot or base.rot
+    return {
+        pos = pos,
+        rot = CFrame.Angles(math.rad(rot.X), math.rad(rot.Y), math.rad(rot.Z))
+    }
 end
 
 local function Stop()
     if con then con:Disconnect() con = nil end
+    stopBangAnims()
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
     task.wait()
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
@@ -45,10 +114,12 @@ local function Stop()
         myRoot.CFrame = savedPos
         myRoot.AssemblyLinearVelocity = Vector3.new()
         myRoot.AssemblyAngularVelocity = Vector3.new()
+        myRoot.RotVelocity = Vector3.new()
     end
     savedPos = nil
     if myHum and myHum.Parent then
         myHum.WalkSpeed = 16
+        myHum.Sit = false
     end
 end
 
@@ -66,72 +137,105 @@ end
 
 local function Start()
     if con then con:Disconnect() con = nil end
+    stopBangAnims()
+
     local target = findPlayer(targetName)
     if not target or not target.Character then return end
     local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
     local tHum = target.Character:FindFirstChild("Humanoid")
     if not tRoot then return end
     savedPos = myRoot.CFrame
+
     if speeds[currentMode] then
         myHum.WalkSpeed = speeds[currentMode]
     elseif tHum then
         myHum.WalkSpeed = tHum.WalkSpeed
     end
+
+    -- // Start bang anims if mode is bang
+    if currentMode == "bang" then
+        startBangAnimLoop()
+    end
+
     con = RunService.Heartbeat:Connect(function()
         if not myRoot or not myRoot.Parent or myHum.Health <= 0 then Stop() return end
+
         if not tRoot or not tRoot:IsDescendantOf(workspace) then
             tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
             if not tRoot then return end
         end
+
         if speeds[currentMode] and tHum then
             myHum.WalkSpeed = tHum.WalkSpeed + 5
         end
+
+        if currentMode == "headsit" then
+            myHum.Sit = true
+        end
+
+        if currentMode == "bang" then
+            pcall(function() tRoot.RotVelocity = Vector3.new(0, 50, 0) end)
+        end
+
         local offset = getOffset()
         pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
+
         myRoot.CFrame = tRoot.CFrame * CFrame.new(offset.pos) * offset.rot
         myRoot.AssemblyLinearVelocity = Vector3.new()
         myRoot.AssemblyAngularVelocity = Vector3.new()
+        myRoot.RotVelocity = Vector3.new()
     end)
 end
 
 -- // UI
+local FRAME_W = 280
 local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
 screenGui.Parent = me.PlayerGui
 
--- // Dragging function
+-- // Smooth drag
 local function makeDraggable(dragHandle, dragTarget)
     local dragging = false
     local dragStart = nil
     local startPos = nil
+    local lastGoalPos = nil
+    local DRAG_SPEED = 8
 
     dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch
-        or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = dragTarget.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
 
-    dragHandle.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch
-        or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                local delta = input.Position - dragStart
+                lastGoalPos = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
         end
     end)
 
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (
-            input.UserInputType == Enum.UserInputType.Touch
-            or input.UserInputType == Enum.UserInputType.MouseMovement
-        ) then
-            local delta = input.Position - dragStart
+    RunService.Heartbeat:Connect(function(dt)
+        if not startPos then return end
+        if lastGoalPos then
             dragTarget.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
+                dragTarget.Position.X.Scale,
+                dragTarget.Position.X.Offset + (lastGoalPos.X.Offset - dragTarget.Position.X.Offset) * math.min(dt * DRAG_SPEED * 60, 1),
+                dragTarget.Position.Y.Scale,
+                dragTarget.Position.Y.Offset + (lastGoalPos.Y.Offset - dragTarget.Position.Y.Offset) * math.min(dt * DRAG_SPEED * 60, 1)
             )
         end
     end)
@@ -148,17 +252,18 @@ hideBtn.Font = Enum.Font.GothamBold
 hideBtn.TextSize = 12
 hideBtn.Parent = screenGui
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
+makeDraggable(hideBtn, hideBtn)
 
 -- // Main frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 460)
+frame.Size = UDim2.new(0, FRAME_W, 0, 480)
 frame.Position = UDim2.new(0, 20, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
 frame.Parent = screenGui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
--- // Title bar (drag handle for frame)
+-- // Title bar
 local titleBar = Instance.new("TextLabel")
 titleBar.Size = UDim2.new(1, 0, 0, 35)
 titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -168,18 +273,15 @@ titleBar.Font = Enum.Font.GothamBold
 titleBar.TextSize = 15
 titleBar.Parent = frame
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
-
--- make frame draggable by title bar
 makeDraggable(titleBar, frame)
--- make hide button draggable too
-makeDraggable(hideBtn, hideBtn)
 
+-- // Username box
 local nameBox = Instance.new("TextBox")
-nameBox.Size = UDim2.new(1, -20, 0, 35)
-nameBox.Position = UDim2.new(0, 10, 0, 45)
+nameBox.Size = UDim2.new(1, -20, 0, 32)
+nameBox.Position = UDim2.new(0, 10, 0, 43)
 nameBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-nameBox.PlaceholderText = "Enter username or display name..."
+nameBox.PlaceholderText = "Name or display name..."
 nameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
 nameBox.Text = ""
 nameBox.Font = Enum.Font.Gotham
@@ -187,35 +289,70 @@ nameBox.TextSize = 13
 nameBox.ClearTextOnFocus = false
 nameBox.Parent = frame
 Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 6)
-
 nameBox:GetPropertyChangedSignal("Text"):Connect(function()
     targetName = nameBox.Text
 end)
 
+-- // Page tabs
+local tabContainer = Instance.new("Frame")
+tabContainer.Size = UDim2.new(1, -20, 0, 28)
+tabContainer.Position = UDim2.new(0, 10, 0, 82)
+tabContainer.BackgroundTransparency = 1
+tabContainer.Parent = frame
+
+local tabButtons = {}
+local pageContainers = {}
+
+for i, page in ipairs(pages) do
+    local tab = Instance.new("TextButton")
+    tab.Size = UDim2.new(1/#pages, -4, 1, 0)
+    tab.Position = UDim2.new((i-1)/#pages, 2, 0, 0)
+    tab.BackgroundColor3 = i == 1 and Color3.fromRGB(80, 120, 255) or Color3.fromRGB(45, 45, 45)
+    tab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tab.Text = page.name
+    tab.Font = Enum.Font.GothamBold
+    tab.TextSize = 12
+    tab.Parent = tabContainer
+    Instance.new("UICorner", tab).CornerRadius = UDim.new(0, 6)
+    tabButtons[i] = tab
+end
+
 -- // XYZ Panel
 local xyzPanel = Instance.new("Frame")
-xyzPanel.Size = UDim2.new(1, -20, 0, 110)
-xyzPanel.Position = UDim2.new(0, 10, 0, 90)
+xyzPanel.Size = UDim2.new(1, -20, 0, 160)
+xyzPanel.Position = UDim2.new(0, 10, 0, 118)
 xyzPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 xyzPanel.BorderSizePixel = 0
 xyzPanel.Visible = false
+xyzPanel.ZIndex = 5
 xyzPanel.Parent = frame
 Instance.new("UICorner", xyzPanel).CornerRadius = UDim.new(0, 6)
 
-local xyzTitle = Instance.new("TextLabel")
-xyzTitle.Size = UDim2.new(1, 0, 0, 20)
-xyzTitle.BackgroundTransparency = 1
-xyzTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-xyzTitle.Text = "Custom XYZ Offset"
-xyzTitle.Font = Enum.Font.GothamBold
-xyzTitle.TextSize = 11
-xyzTitle.Parent = xyzPanel
+local xyzLabel = Instance.new("TextLabel")
+xyzLabel.Size = UDim2.new(1, -25, 0, 20)
+xyzLabel.BackgroundTransparency = 1
+xyzLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+xyzLabel.Text = "Position"
+xyzLabel.Font = Enum.Font.GothamBold
+xyzLabel.TextSize = 11
+xyzLabel.Parent = xyzPanel
 
-local axisLabels = {"X", "Y", "Z"}
+local showRotBtn = Instance.new("TextButton")
+showRotBtn.Size = UDim2.new(0, 18, 0, 18)
+showRotBtn.Position = UDim2.new(1, -22, 0, 1)
+showRotBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+showRotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+showRotBtn.Text = "▼"
+showRotBtn.Font = Enum.Font.GothamBold
+showRotBtn.TextSize = 10
+showRotBtn.ZIndex = 6
+showRotBtn.Parent = xyzPanel
+Instance.new("UICorner", showRotBtn).CornerRadius = UDim.new(0, 4)
+
 local axisBoxes = {}
-local defaultVals = {0, 0, -3}
+local rotBoxes = {}
 
-for i, axis in ipairs(axisLabels) do
+for i, axis in ipairs({"X","Y","Z"}) do
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -10, 0, 24)
     row.Position = UDim2.new(0, 5, 0, 18 + (i-1) * 28)
@@ -236,81 +373,186 @@ for i, axis in ipairs(axisLabels) do
     box.Position = UDim2.new(0, 25, 0, 0)
     box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     box.TextColor3 = Color3.fromRGB(255, 255, 255)
-    box.Text = tostring(defaultVals[i])
+    box.Text = "0"
     box.Font = Enum.Font.Gotham
     box.TextSize = 12
     box.ClearTextOnFocus = false
+    box.ZIndex = 6
     box.Parent = row
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
     axisBoxes[axis] = box
 end
 
+-- // Rotation section
+local rotSection = Instance.new("Frame")
+rotSection.Size = UDim2.new(1, -10, 0, 90)
+rotSection.Position = UDim2.new(0, 5, 0, 105)
+rotSection.BackgroundTransparency = 1
+rotSection.Visible = false
+rotSection.Parent = xyzPanel
+
+local rotLabel = Instance.new("TextLabel")
+rotLabel.Size = UDim2.new(1, 0, 0, 16)
+rotLabel.BackgroundTransparency = 1
+rotLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+rotLabel.Text = "Rotation (degrees)"
+rotLabel.Font = Enum.Font.GothamBold
+rotLabel.TextSize = 10
+rotLabel.Parent = rotSection
+
+for i, axis in ipairs({"RX","RY","RZ"}) do
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 22)
+    row.Position = UDim2.new(0, 0, 0, 16 + (i-1) * 24)
+    row.BackgroundTransparency = 1
+    row.Parent = rotSection
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 25, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.Text = axis
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 11
+    lbl.Parent = row
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -30, 1, 0)
+    box.Position = UDim2.new(0, 30, 0, 0)
+    box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Text = "0"
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 11
+    box.ClearTextOnFocus = false
+    box.ZIndex = 6
+    box.Parent = row
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    rotBoxes[axis] = box
+end
+
+local rotVisible = false
+showRotBtn.MouseButton1Click:Connect(function()
+    rotVisible = not rotVisible
+    rotSection.Visible = rotVisible
+    showRotBtn.Text = rotVisible and "▲" or "▼"
+    xyzPanel.Size = rotVisible
+        and UDim2.new(1, -20, 0, 260)
+        or UDim2.new(1, -20, 0, 160)
+end)
+
 local applyXYZ = Instance.new("TextButton")
-applyXYZ.Size = UDim2.new(1, -10, 0, 20)
-applyXYZ.Position = UDim2.new(0, 5, 0, 88)
+applyXYZ.Size = UDim2.new(1, -10, 0, 22)
+applyXYZ.Position = UDim2.new(0, 5, 1, -26)
 applyXYZ.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
 applyXYZ.TextColor3 = Color3.fromRGB(255, 255, 255)
 applyXYZ.Text = "Apply"
 applyXYZ.Font = Enum.Font.GothamBold
 applyXYZ.TextSize = 11
+applyXYZ.ZIndex = 6
 applyXYZ.Parent = xyzPanel
 Instance.new("UICorner", applyXYZ).CornerRadius = UDim.new(0, 4)
 
 applyXYZ.MouseButton1Click:Connect(function()
-    local x = tonumber(axisBoxes["X"].Text) or 0
-    local y = tonumber(axisBoxes["Y"].Text) or 0
-    local z = tonumber(axisBoxes["Z"].Text) or 0
-    customOffset = Vector3.new(x, y, z)
+    customOffset = Vector3.new(
+        tonumber(axisBoxes["X"].Text) or 0,
+        tonumber(axisBoxes["Y"].Text) or 0,
+        tonumber(axisBoxes["Z"].Text) or 0
+    )
+    customRot = Vector3.new(
+        tonumber(rotBoxes["RX"].Text) or 0,
+        tonumber(rotBoxes["RY"].Text) or 0,
+        tonumber(rotBoxes["RZ"].Text) or 0
+    )
     if active then Start() end
 end)
 
 -- // Mode buttons
-local modes = {"bodyblock", "softblock", "shield", "headsit", "elevator", "nojump", "fast", "medium", "slow"}
 local modeButtons = {}
 local lastTap = {}
 
-for i, mode in ipairs(modes) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.5, -15, 0, 28)
-    btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 10 or 5, 0, 210 + math.floor((i-1)/2) * 34)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Text = mode
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 11
-    btn.Parent = frame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    modeButtons[mode] = btn
+local function buildPage(pageIndex)
+    for _, c in pairs(pageContainers) do c:Destroy() end
+    pageContainers = {}
 
-    btn.MouseButton1Click:Connect(function()
-        local now = tick()
-        local last = lastTap[mode] or 0
-        if now - last < 0.35 then
-            customOffset = nil
-            local o = offsets[mode]
-            axisBoxes["X"].Text = tostring(o.pos.X)
-            axisBoxes["Y"].Text = tostring(o.pos.Y)
-            axisBoxes["Z"].Text = tostring(o.pos.Z)
-            xyzPanel.Visible = true
-        else
-            xyzPanel.Visible = false
-            customOffset = nil
-            currentMode = mode
-            for m, b in pairs(modeButtons) do
-                b.BackgroundColor3 = m == mode
-                    and Color3.fromRGB(80, 120, 255)
-                    or Color3.fromRGB(50, 50, 50)
-            end
-            if active then Start() end
+    local page = pages[pageIndex]
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -20, 0, 300)
+    container.Position = UDim2.new(0, 10, 0, 118)
+    container.BackgroundTransparency = 1
+    container.Parent = frame
+    table.insert(pageContainers, container)
+
+    modeButtons = {}
+
+    for i, mode in ipairs(page.modes) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.5, -6, 0, 30)
+        btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 0 or 6, 0, math.floor((i-1)/2) * 36)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.Text = mode
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 12
+        btn.Parent = container
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        modeButtons[mode] = btn
+
+        if mode == currentMode then
+            btn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
         end
-        lastTap[mode] = now
+
+        btn.MouseButton1Click:Connect(function()
+            local now = tick()
+            local last = lastTap[mode] or 0
+            if now - last < 0.35 then
+                customOffset = nil
+                customRot = nil
+                local o = offsets[mode]
+                axisBoxes["X"].Text = tostring(o.pos.X)
+                axisBoxes["Y"].Text = tostring(o.pos.Y)
+                axisBoxes["Z"].Text = tostring(o.pos.Z)
+                rotBoxes["RX"].Text = tostring(o.rot.X)
+                rotBoxes["RY"].Text = tostring(o.rot.Y)
+                rotBoxes["RZ"].Text = tostring(o.rot.Z)
+                xyzPanel.Visible = true
+            else
+                xyzPanel.Visible = false
+                customOffset = nil
+                customRot = nil
+                currentMode = mode
+                for m, b in pairs(modeButtons) do
+                    b.BackgroundColor3 = m == mode
+                        and Color3.fromRGB(80, 120, 255)
+                        or Color3.fromRGB(50, 50, 50)
+                end
+                if active then Start() end
+            end
+            lastTap[mode] = now
+        end)
+    end
+end
+
+-- // Tab switching
+for i, tab in ipairs(tabButtons) do
+    tab.MouseButton1Click:Connect(function()
+        currentPage = i
+        xyzPanel.Visible = false
+        for j, t in ipairs(tabButtons) do
+            t.BackgroundColor3 = j == i
+                and Color3.fromRGB(80, 120, 255)
+                or Color3.fromRGB(45, 45, 45)
+        end
+        buildPage(i)
     end)
 end
+
+buildPage(1)
 
 -- // Toggle
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
-toggle.Position = UDim2.new(0, 10, 0, 410)
+toggle.Position = UDim2.new(0, 10, 0, 428)
 toggle.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggle.Text = "OFF"
@@ -338,8 +580,6 @@ hideBtn.MouseButton1Click:Connect(function()
     hideBtn.Text = uiVisible and "Hide UI" or "Show UI"
 end)
 
-modeButtons["bodyblock"].BackgroundColor3 = Color3.fromRGB(80, 120, 255)
-
 -- // Death + Respawn fix
 local function onDied()
     if active then
@@ -359,4 +599,8 @@ me.CharacterAdded:Connect(function(newChar)
     myHum = newChar:WaitForChild("Humanoid")
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
     myHum.Died:Connect(onDied)
+
+    -- // Reset anim tracks on respawn
+    animTrack1 = nil
+    animTrack2 = nil
 end)
