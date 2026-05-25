@@ -141,7 +141,6 @@ local function doNaNFling()
             myRoot.AssemblyAngularVelocity = Vector3.new()
             myRoot.RotVelocity = Vector3.new()
         else
-            -- // NaN through our root which is linked to theirs
             myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
             myRoot.Velocity = Vector3.new(NAN, NAN, NAN)
             myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
