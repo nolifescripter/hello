@@ -132,31 +132,41 @@ local function doNaNFling()
             return
         end
 
-        -- // Link THEIR root to OURS not the other way
-        pcall(function() sethiddenproperty(tRoot, "PhysicsRepRootPart", myRoot) end)
+        pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
 
         if elapsed < 0.5 then
             myRoot.CFrame = tRoot.CFrame
+            myRoot.Velocity = Vector3.new()
             myRoot.AssemblyLinearVelocity = Vector3.new()
             myRoot.AssemblyAngularVelocity = Vector3.new()
             myRoot.RotVelocity = Vector3.new()
         else
-            -- // NaN fires on their root now
-            tRoot.CFrame = CFrame.new(NAN, NAN, NAN)
-            tRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
-            tRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
+            -- // NaN through our root which is linked to theirs
+            myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
+            myRoot.Velocity = Vector3.new(NAN, NAN, NAN)
+            myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
+            myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
+            myRoot.RotVelocity = Vector3.new(NAN, NAN, NAN)
 
             flingCon:Disconnect()
 
             task.wait(0.1)
-            pcall(function() sethiddenproperty(tRoot, "PhysicsRepRootPart", nil) end)
+            pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
             task.wait(0.05)
             pcall(function()
                 myRoot.CFrame = safePos
+                myRoot.Velocity = Vector3.new()
                 myRoot.AssemblyLinearVelocity = Vector3.new()
                 myRoot.AssemblyAngularVelocity = Vector3.new()
                 myRoot.RotVelocity = Vector3.new()
+            end)
+            task.wait(0.05)
+            pcall(function()
+                myRoot.CFrame = safePos
                 myRoot.Velocity = Vector3.new()
+                myRoot.AssemblyLinearVelocity = Vector3.new()
+                myRoot.AssemblyAngularVelocity = Vector3.new()
+                myRoot.RotVelocity = Vector3.new()
             end)
         end
     end)
