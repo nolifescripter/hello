@@ -121,42 +121,54 @@ local function doNaNFling()
     if not tRoot then return end
 
     local safePos = myRoot.CFrame
+    local flingCon = nil
+    local elapsed = 0
 
-    -- // Step 1: link to target and get inside them first
-    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
-    myRoot.CFrame = tRoot.CFrame
-    myRoot.AssemblyLinearVelocity = Vector3.new()
-    myRoot.AssemblyAngularVelocity = Vector3.new()
-    myRoot.RotVelocity = Vector3.new()
+    -- // Step 1: get inside them with heartbeat loop like original
+    flingCon = RunService.Heartbeat:Connect(function(dt)
+        elapsed = elapsed + dt
 
-    -- // Step 2: stay inside them for 0.5 seconds like the original
-    task.wait(0.5)
+        if not tRoot or not tRoot:IsDescendantOf(workspace) then
+            flingCon:Disconnect()
+            return
+        end
 
-    -- // Step 3: NOW fire the NaN while still linked
-    pcall(function()
-        myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
-        myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
-        myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
-    end)
+        pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
 
-    task.wait(0.1)
+        if elapsed < 0.5 then
+            -- // Stay inside them
+            myRoot.CFrame = tRoot.CFrame
+            myRoot.AssemblyLinearVelocity = Vector3.new()
+            myRoot.AssemblyAngularVelocity = Vector3.new()
+            myRoot.RotVelocity = Vector3.new()
+        else
+            -- // Fire NaN
+            myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
+            myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
+            myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
+            myRoot.RotVelocity = Vector3.new(NAN, NAN, NAN)
 
-    -- // Step 4: clean yourself up
-    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
-    pcall(function()
-        myRoot.CFrame = safePos
-        myRoot.AssemblyLinearVelocity = Vector3.new()
-        myRoot.AssemblyAngularVelocity = Vector3.new()
-        myRoot.RotVelocity = Vector3.new()
-        myRoot.Velocity = Vector3.new()
-    end)
+            flingCon:Disconnect()
 
-    task.wait(0.05)
-    pcall(function()
-        myRoot.CFrame = safePos
-        myRoot.AssemblyLinearVelocity = Vector3.new()
-        myRoot.AssemblyAngularVelocity = Vector3.new()
-        myRoot.RotVelocity = Vector3.new()
+            -- // Clean yourself up
+            task.wait(0.1)
+            pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+            task.wait(0.05)
+            pcall(function()
+                myRoot.CFrame = safePos
+                myRoot.AssemblyLinearVelocity = Vector3.new()
+                myRoot.AssemblyAngularVelocity = Vector3.new()
+                myRoot.RotVelocity = Vector3.new()
+                myRoot.Velocity = Vector3.new()
+            end)
+            task.wait(0.05)
+            pcall(function()
+                myRoot.CFrame = safePos
+                myRoot.AssemblyLinearVelocity = Vector3.new()
+                myRoot.AssemblyAngularVelocity = Vector3.new()
+                myRoot.RotVelocity = Vector3.new()
+            end)
+        end
     end)
 end
 
