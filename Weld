@@ -76,14 +76,20 @@ local offsets = {
     annoy       = { pos = Vector3.new(0, 0, 1.5),     rot = Vector3.new(0, 0, 0) },
     bang        = { pos = Vector3.new(0, 0, 1.2),     rot = Vector3.new(0, 0, 0) },
     invert      = { pos = Vector3.new(0, 0, 2),       rot = Vector3.new(0, 180, 0) },
+    nanfling    = { pos = Vector3.new(0, 0, 0),       rot = Vector3.new(0, 0, 0) },
 }
+
+local lockedModes = { nanfling = true }
 
 local pages = {
     { name = "Poses", modes = {"bodyblock","softblock","shield","headsit","elevator","nojump","magiccarpet","platform","jumpscare","infjump"} },
     { name = "Speed", modes = {"fast","medium","slow","annoy","bang","invert"} },
+    { name = "Fling", modes = {"nanfling"} },
 }
 
 local speeds = { fast = 50, medium = 24, slow = 10, annoy = 30, bang = 60, invert = 24 }
+
+local NAN = 0/0
 
 local function getOffset()
     local base = offsets[currentMode]
@@ -93,6 +99,54 @@ local function getOffset()
         pos = pos,
         rot = CFrame.Angles(math.rad(rot.X), math.rad(rot.Y), math.rad(rot.Z))
     }
+end
+
+local function findPlayer(query)
+    query = query:lower():gsub("%s+", "")
+    if query == "" then return nil end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == me then continue end
+        if p.Name:lower():find(query) or p.DisplayName:lower():find(query) then
+            return p
+        end
+    end
+    return nil
+end
+
+-- // NaN fling
+local function doNaNFling()
+    local target = findPlayer(targetName)
+    if not target or not target.Character then return end
+    local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not tRoot then return end
+
+    local safePos = myRoot.CFrame
+
+    pcall(function()
+        sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot)
+        myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
+        myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
+        myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
+    end)
+
+    task.wait(0.1)
+
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+    pcall(function()
+        myRoot.CFrame = safePos
+        myRoot.AssemblyLinearVelocity = Vector3.new()
+        myRoot.AssemblyAngularVelocity = Vector3.new()
+        myRoot.RotVelocity = Vector3.new()
+        myRoot.Velocity = Vector3.new()
+    end)
+
+    task.wait(0.05)
+    pcall(function()
+        myRoot.CFrame = safePos
+        myRoot.AssemblyLinearVelocity = Vector3.new()
+        myRoot.AssemblyAngularVelocity = Vector3.new()
+        myRoot.RotVelocity = Vector3.new()
+    end)
 end
 
 local function Stop()
@@ -114,28 +168,9 @@ local function Stop()
     end
 end
 
-local function findPlayer(query)
-    query = query:lower():gsub("%s+", "")
-    if query == "" then return nil end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p == me then continue end
-        if p.Name:lower():find(query) or p.DisplayName:lower():find(query) then
-            return p
-        end
-    end
-    return nil
-end
-
 local function Start()
     if con then con:Disconnect() con = nil end
     stopBangAnims()
-
-    local target = findPlayer(targetName)
-    print("target:", target)
-    if not target or not target.Character then
-        print("no target or no character")
-        return
-    end
 
     local target = findPlayer(targetName)
     if not target or not target.Character then return end
@@ -150,7 +185,6 @@ local function Start()
         myHum.WalkSpeed = tHum.WalkSpeed
     end
 
-    -- // Start bang anims if mode is bang
     if currentMode == "bang" then
         startBangAnimLoop()
     end
@@ -191,7 +225,6 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
 screenGui.Parent = me.PlayerGui
 
--- // Smooth drag
 local function makeDraggable(dragHandle, dragTarget)
     local dragging = false
     local dragStart = nil
@@ -239,7 +272,6 @@ local function makeDraggable(dragHandle, dragTarget)
     end)
 end
 
--- // Hide button
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 80, 0, 28)
 hideBtn.Position = UDim2.new(0, 20, 0.3, -35)
@@ -252,7 +284,6 @@ hideBtn.Parent = screenGui
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 6)
 makeDraggable(hideBtn, hideBtn)
 
--- // Main frame
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, FRAME_W, 0, 480)
 frame.Position = UDim2.new(0, 20, 0.3, 0)
@@ -261,7 +292,6 @@ frame.BorderSizePixel = 0
 frame.Parent = screenGui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
--- // Title bar
 local titleBar = Instance.new("TextLabel")
 titleBar.Size = UDim2.new(1, 0, 0, 35)
 titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -273,7 +303,6 @@ titleBar.Parent = frame
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
 makeDraggable(titleBar, frame)
 
--- // Username box
 local nameBox = Instance.new("TextBox")
 nameBox.Size = UDim2.new(1, -20, 0, 32)
 nameBox.Position = UDim2.new(0, 10, 0, 43)
@@ -291,7 +320,6 @@ nameBox:GetPropertyChangedSignal("Text"):Connect(function()
     targetName = nameBox.Text
 end)
 
--- // Page tabs
 local tabContainer = Instance.new("Frame")
 tabContainer.Size = UDim2.new(1, -20, 0, 28)
 tabContainer.Position = UDim2.new(0, 10, 0, 82)
@@ -315,7 +343,6 @@ for i, page in ipairs(pages) do
     tabButtons[i] = tab
 end
 
--- // XYZ Panel
 local xyzPanel = Instance.new("Frame")
 xyzPanel.Size = UDim2.new(1, -20, 0, 160)
 xyzPanel.Position = UDim2.new(0, 10, 0, 118)
@@ -381,7 +408,6 @@ for i, axis in ipairs({"X","Y","Z"}) do
     axisBoxes[axis] = box
 end
 
--- // Rotation section
 local rotSection = Instance.new("Frame")
 rotSection.Size = UDim2.new(1, -10, 0, 90)
 rotSection.Position = UDim2.new(0, 5, 0, 105)
@@ -465,7 +491,6 @@ applyXYZ.MouseButton1Click:Connect(function()
     if active then Start() end
 end)
 
--- // Mode buttons
 local modeButtons = {}
 local lastTap = {}
 
@@ -485,22 +510,36 @@ local function buildPage(pageIndex)
 
     for i, mode in ipairs(page.modes) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.5, -6, 0, 30)
-        btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 0 or 6, 0, math.floor((i-1)/2) * 36)
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        local isLocked = lockedModes[mode]
+
+        if isLocked then
+            btn.Size = UDim2.new(1, 0, 0, 50)
+            btn.Position = UDim2.new(0, 0, 0, math.floor((i-1)) * 56)
+            btn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        else
+            btn.Size = UDim2.new(0.5, -6, 0, 30)
+            btn.Position = UDim2.new(((i-1) % 2) * 0.5, ((i-1) % 2 == 0) and 0 or 6, 0, math.floor((i-1)/2) * 36)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end
+
         btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-        btn.Text = mode
+        btn.Text = isLocked and "NaN Fling\n(one shot)" or mode
         btn.Font = Enum.Font.Gotham
         btn.TextSize = 12
         btn.Parent = container
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         modeButtons[mode] = btn
 
-        if mode == currentMode then
+        if mode == currentMode and not isLocked then
             btn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
         end
 
         btn.MouseButton1Click:Connect(function()
+            if isLocked then
+                doNaNFling()
+                return
+            end
+
             local now = tick()
             local last = lastTap[mode] or 0
             if now - last < 0.35 then
@@ -531,7 +570,6 @@ local function buildPage(pageIndex)
     end
 end
 
--- // Tab switching
 for i, tab in ipairs(tabButtons) do
     tab.MouseButton1Click:Connect(function()
         currentPage = i
@@ -547,7 +585,6 @@ end
 
 buildPage(1)
 
--- // Toggle
 local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 38)
 toggle.Position = UDim2.new(0, 10, 0, 428)
@@ -578,7 +615,6 @@ hideBtn.MouseButton1Click:Connect(function()
     hideBtn.Text = uiVisible and "Hide UI" or "Show UI"
 end)
 
--- // Death + Respawn fix
 local function onDied()
     if active then
         Stop()
@@ -597,8 +633,6 @@ me.CharacterAdded:Connect(function(newChar)
     myHum = newChar:WaitForChild("Humanoid")
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
     myHum.Died:Connect(onDied)
-
-    -- // Reset anim tracks on respawn
     animTrack1 = nil
     animTrack2 = nil
 end)
