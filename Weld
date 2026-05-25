@@ -124,7 +124,6 @@ local function doNaNFling()
     local flingCon = nil
     local elapsed = 0
 
-    -- // Step 1: get inside them with heartbeat loop like original
     flingCon = RunService.Heartbeat:Connect(function(dt)
         elapsed = elapsed + dt
 
@@ -133,26 +132,24 @@ local function doNaNFling()
             return
         end
 
-        pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
+        -- // Link THEIR root to OURS not the other way
+        pcall(function() sethiddenproperty(tRoot, "PhysicsRepRootPart", myRoot) end)
 
         if elapsed < 0.5 then
-            -- // Stay inside them
             myRoot.CFrame = tRoot.CFrame
             myRoot.AssemblyLinearVelocity = Vector3.new()
             myRoot.AssemblyAngularVelocity = Vector3.new()
             myRoot.RotVelocity = Vector3.new()
         else
-            -- // Fire NaN
-            myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
-            myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
-            myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
-            myRoot.RotVelocity = Vector3.new(NAN, NAN, NAN)
+            -- // NaN fires on their root now
+            tRoot.CFrame = CFrame.new(NAN, NAN, NAN)
+            tRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
+            tRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
 
             flingCon:Disconnect()
 
-            -- // Clean yourself up
             task.wait(0.1)
-            pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
+            pcall(function() sethiddenproperty(tRoot, "PhysicsRepRootPart", nil) end)
             task.wait(0.05)
             pcall(function()
                 myRoot.CFrame = safePos
@@ -160,13 +157,6 @@ local function doNaNFling()
                 myRoot.AssemblyAngularVelocity = Vector3.new()
                 myRoot.RotVelocity = Vector3.new()
                 myRoot.Velocity = Vector3.new()
-            end)
-            task.wait(0.05)
-            pcall(function()
-                myRoot.CFrame = safePos
-                myRoot.AssemblyLinearVelocity = Vector3.new()
-                myRoot.AssemblyAngularVelocity = Vector3.new()
-                myRoot.RotVelocity = Vector3.new()
             end)
         end
     end)
