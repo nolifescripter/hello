@@ -122,8 +122,18 @@ local function doNaNFling()
 
     local safePos = myRoot.CFrame
 
+    -- // Step 1: link to target and get inside them first
+    pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot) end)
+    myRoot.CFrame = tRoot.CFrame
+    myRoot.AssemblyLinearVelocity = Vector3.new()
+    myRoot.AssemblyAngularVelocity = Vector3.new()
+    myRoot.RotVelocity = Vector3.new()
+
+    -- // Step 2: stay inside them for 0.5 seconds like the original
+    task.wait(0.5)
+
+    -- // Step 3: NOW fire the NaN while still linked
     pcall(function()
-        sethiddenproperty(myRoot, "PhysicsRepRootPart", tRoot)
         myRoot.CFrame = CFrame.new(NAN, NAN, NAN)
         myRoot.AssemblyLinearVelocity = Vector3.new(NAN, NAN, NAN)
         myRoot.AssemblyAngularVelocity = Vector3.new(NAN, NAN, NAN)
@@ -131,6 +141,7 @@ local function doNaNFling()
 
     task.wait(0.1)
 
+    -- // Step 4: clean yourself up
     pcall(function() sethiddenproperty(myRoot, "PhysicsRepRootPart", nil) end)
     pcall(function()
         myRoot.CFrame = safePos
